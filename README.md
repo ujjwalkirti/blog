@@ -1,4 +1,4 @@
-# blog# Blog
+# Blog
 
 repo for [Ujjwal's Portfolio](https://ujjwal-portfolio-flame.vercel.app/)
 
