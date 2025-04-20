@@ -27,7 +27,7 @@ If the url is `https://www.king-kohli.com/`, then the nginx will send the reques
 
 The following image will make it more clear to you:
 
-<p align="center"><img src="./assets/reverse-proxying.png" alt="reverse-proxying" width="600"  /></p>
+<p align="center"><img src="blogs/bare-metal-deployment/assets/reverse-proxying.png" alt="reverse-proxying" width="600"  /></p>
 
 So, I started to modify the existing settings on the remote machine. Here is the conclusive list of changes that were made:
 
@@ -96,7 +96,7 @@ Initially I had forgot to provide the `.env` file to the backend API. So I stopp
 Finally it was the moment of truth, and I opened the required domain in an incognito tab and it worked!
 
 <p align="center">
-    <img src="./assets/senior-dev-meme.jpg" alt="Senior-dev-meme" width="300"/>
+    <img src="blogs/bare-metal-deployment/assets/senior-dev-meme.jpg" alt="Senior-dev-meme" width="300"/>
 </p>
 
 I completed the other formalities like creating a proper folder structure for the same, and documentation about the entire infrastructure so that in future if someone has to work on this project, it would be easy to understand.
