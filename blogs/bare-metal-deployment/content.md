@@ -100,8 +100,8 @@ Finally it was the moment of truth, and I opened the required domain in an incog
 </p>
 
 I completed the other formalities like creating a proper folder structure for the same, and documentation about the entire infrastructure so that in future if someone has to work on this project, it would be easy to understand.
-
+<br>
 Honestly speaking it was an eye opening experience for me as it was the first time I was working with remote server without using any GUI. Secondly it taught me how `nginx` works and how to use it to setup a reverse-proxying.
-
+<br>
 This was my experience thanks for reading. I hope you enjoyed it.
 Stay tuned for more of my thoughts and DevOps stories.
