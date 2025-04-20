@@ -1,6 +1,6 @@
 - slug: bare-metal-deployment
   title: Deploying Frontend (Angular), Backend (Express) and Database (Postgres) on a remote server
-  thumbnail: /blogs/bare-metal-deployment/assets/thumbnail.jpg
+  thumbnail: /blogs/bare-metal-deployment/assets/thumbnail.png
   description: "A detailed discussion about the approach adopted by me to deploy a full-stack web application on a bare metal server using Nginx as a reverse proxy and a little bit of hacking."
   authors:
     - name: Ujjwal Kirti
