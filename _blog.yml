@@ -19,4 +19,21 @@
     - server
     - pm2
     - nodejs
-    - typescript
+
+- slug: ci-cd-pipeline-with-github-actions
+  title: "From Code to Cloud: Streamlining CI/CD with GitHub Actions"
+  thumbnail: "/blogs/ci-cd-pipeline-with-github-actions/assets/thumbnail.png"
+  description: "Embark on a journey through the intricacies of setting up a CI/CD pipeline with GitHub Actions for an Angular frontend and Express backend. This blog delves into the challenges faced and the innovative solutions crafted, from dynamic slot management to secure image transfers. Discover how automation boosted productivity and reduced deployment times, and explore future plans for scaling with cloud-based infrastructure. Whether you're enhancing your own CI/CD processes or curious about deploying complex applications, this blog offers valuable insights and practical strategies."
+  authors:
+    - name: "Ujjwal Kirti"
+      profile: "https://github.com/ujjwalkirti"
+      avatar: "https://avatars.githubusercontent.com/u/64329707?v=4"
+  created: "2 May, 2025"
+  updated: "2 May, 2025"
+  tags:
+    - ci-cd
+    - github-actions
+    - devops
+    - dev-deployment
+    - angular
+    - express
