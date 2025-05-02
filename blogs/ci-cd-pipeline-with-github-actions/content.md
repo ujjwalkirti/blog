@@ -2,28 +2,32 @@
 
 1. [Introduction](#introduction)
 2. [Innovative Deployment Strategies](#innovative-deployment-strategies)
-   - [Dynamic Slot Management](#dynamic-slot-management)
-   - [Secure and Efficient Image Transfer](#secure-and-efficient-image-transfer)
-   - [Synchronizing Frontend and Backend Deployments](#synchronizing-frontend-and-backend-deployments)
-   - [Automating Environment Configuration](#automating-environment-configuration)
+    - [Dynamic Slot Management](#dynamic-slot-management)
+    - [Secure and Efficient Image Transfer](#secure-and-efficient-image-transfer)
+    - [Synchronizing Frontend and Backend Deployments](#synchronizing-frontend-and-backend-deployments)
+    - [Automating Environment Configuration](#automating-environment-configuration)
 3. [Frontend CI/CD Pipeline Implementation](#frontend-cicd-pipeline-implementation)
-   - [Development Workflow](#development-workflow)
-   - [Production Workflow](#production-workflow)
+    - [Development Workflow](#development-workflow)
+    - [Production Workflow](#production-workflow)
 4. [Backend CI/CD Pipeline Implementation](#backend-cicd-pipeline-implementation)
-   - [Development Workflow](#development-workflow-1)
-   - [Production Workflow](#production-workflow-1)
+    - [Development Workflow](#development-workflow-1)
+    - [Production Workflow](#production-workflow-1)
 5. [Lessons Learned and Best Practices](#lessons-learned-and-best-practices)
-   - [Lessons Learned](#lessons-learned)
-   - [Best Practices](#best-practices)
+    - [Lessons Learned](#lessons-learned)
+    - [Best Practices](#best-practices)
 6. [Conclusion and Future Enhancements](#conclusion-and-future-enhancements)
-   - [Conclusion](#conclusion)
-   - [Future Enhancements](#future-enhancements)
+    - [Conclusion](#conclusion)
+    - [Future Enhancements](#future-enhancements)
 
 ## Introduction
 
 In the fast-paced world of software development, having a reliable and efficient CI/CD pipeline is crucial for delivering high-quality applications. This blog explores my journey of setting up a comprehensive CI/CD pipeline using GitHub Actions for an Angular frontend and an Express backend.
 
 My goal was to streamline the deployment process, reduce manual intervention, and ensure that both the frontend and backend are always in sync. Through this blog, I will delve into the specific challenges I faced, the innovative solutions I implemented, and the expertise I gained along the way. Whether you're looking to enhance your own CI/CD processes or simply curious about the intricacies of deploying complex applications, this blog offers valuable insights and practical strategies.
+
+<p align="center">
+    <img src="blogs/ci-cd-pipeline-with-github-actions/assets/ci-cd-image.png" alt="CI/CD Pipeline Image" width="300"/>
+</p>
 
 ## Innovative Deployment Strategies
 
@@ -55,6 +59,10 @@ Keeping the frontend and backend in sync during deployments was essential to avo
 **My Approach:**
 I developed a system to capture and store commit hashes for both frontend and backend deployments. This allowed me to verify that the correct versions were deployed together, reducing the risk of mismatches and ensuring consistent functionality across the application. By maintaining a record of deployed versions, I could easily track and manage deployments, ensuring that both parts of the application were always aligned.
 
+<p align="center">
+    <img src="blogs/ci-cd-pipeline-with-github-actions/assets/github-actions.jpg" alt="Github Actions" width="500"/>
+</p>
+
 ### Automating Environment Configuration
 
 **The Challenge:**
@@ -73,141 +81,228 @@ The frontend of my application is built using Angular, a popular framework for b
 
 The development workflow is triggered by pull requests, allowing me to test changes in a controlled environment before merging them into the main branch. Here's how the workflow is structured:
 
-- **Trigger:** The workflow is activated on pull requests that are opened, synchronized, or reopened, except for those from the `main` branch.
-
-  ```yaml
-  on:
-    pull_request:
-      types: [opened, synchronize, reopened]
-  ```
-
-- **Environment Setup:** The workflow begins by checking out the code from the pull request and setting up Docker Buildx for building Docker images.
-
-  ```yaml
-  steps:
-    - name: Checkout repository
-      uses: actions/checkout@v2
-      with:
-        ref: ${{ github.event.pull_request.head.sha }}
-
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v1
-  ```
-
-- **Slot Management:** A dynamic slot management system selects the next available deployment slot, ensuring that each deployment is isolated and does not interfere with others.
-
-  ```yaml
-  - name: Select Deployment Slot
-    id: get_slot
-    run: |
-      SYNCED_SLOT=$(sshpass -p "${{ secrets.SSH_PRIVATE_KEY }}" ssh -T -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} << 'EOF' | tail -n 1
-        # Logic to determine the next slot
-      EOF
-      )
-      echo "DEPLOY_SLOT=$(echo $SYNCED_SLOT | tr -d '\r')" >> $GITHUB_ENV
-  ```
-
-- **Docker Image Management:** The Angular application is built into a Docker image, which is then transferred to the selected deployment slot on the server.
-
-  ```yaml
-  - name: Build & tag Docker image
-    run: |
-      docker build -t angular-app-dev-slot-${{ env.DEPLOY_SLOT }} .
-      docker save angular-app-dev-slot-${{ env.DEPLOY_SLOT }} -o angular-app-dev-slot-${{ env.DEPLOY_SLOT }}.tar
-  ```
-
-- **Post-Deployment Actions:** After deployment, several steps are taken to ensure the deployment is successful and visible to the team:
-
-  - **Update Slot Files:** The workflow updates slot files to keep track of the last used slots for both frontend and backend, ensuring that future deployments use the correct slots.
+-   **Trigger:** The workflow is activated on pull requests that are opened, synchronized, or reopened, except for those from the `main` branch.
 
     ```yaml
-    - name: Update FE/BE last slot text file
+    on:
+        pull_request:
+            types: [opened, synchronize, reopened]
+    ```
+
+-   **Environment Setup:** The workflow begins by checking out the code from the pull request and setting up Docker Buildx for building Docker images.
+
+    ```yaml
+    steps:
+        - name: Checkout repository
+          uses: actions/checkout@v2
+          with:
+              ref: ${{ github.event.pull_request.head.sha }}
+
+        - name: Set up Docker Buildx
+          uses: docker/setup-buildx-action@v1
+    ```
+
+-   **Slot Management:** A dynamic slot management system selects the next available deployment slot, ensuring that each deployment is isolated and does not interfere with others.
+
+    ```yaml
+    - name: Select Deployment Slot
+      id: get_slot
       run: |
-        sshpass -p "${{ secrets.SSH_PRIVATE_KEY }}" ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} "
-        set -euo pipefail
-        # Define the paths to the FE and BE slot files
-        BE_SLOT_FILE='/path/to/be/last_slot.txt'
-        FE_SLOT_FILE='/path/to/fe/last_slot.txt'
-
-        # Update slot files
-        echo \"${{ env.DEPLOY_SLOT }}\" > \"\$BE_SLOT_FILE\"
-        echo \"${{ env.DEPLOY_SLOT }}\" > \"\$FE_SLOT_FILE\"
-        "
+          SYNCED_SLOT=$(sshpass -p "${{ secrets.SSH_PRIVATE_KEY }}" ssh -T -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} << 'EOF' | tail -n 1
+            # Logic to determine the next slot
+          EOF
+          )
+          echo "DEPLOY_SLOT=$(echo $SYNCED_SLOT | tr -d '\r')" >> $GITHUB_ENV
     ```
 
-  - **Post Deployment Comment:** A comment is posted on the pull request with deployment details, providing visibility into the deployment process and ensuring that all team members are informed of the latest changes.
+-   **Docker Image Management:** The Angular application is built into a Docker image, which is then transferred to the selected deployment slot on the server.
 
     ```yaml
-    - name: Post Deployment Comment on PR
-      uses: actions/github-script@v6
-      with:
-        github-token: ${{ secrets.GITHUB_TOKEN }}
-        script: |
-          const slot = process.env.DEPLOY_SLOT;
-          const devUrl = `https://dev-url-for-slot-${slot}.example.com`;
-          const commentBody = `
-          🚀 **Deployment is Successful!**
-          - **Frontend Slot:** ${slot}
-          - **Dev URL:** [${devUrl}](${devUrl})
-          ✅ The Angular app has been successfully deployed.
-          `;
-
-          const issue_number = context.payload.pull_request.number;
-          const owner = context.repo.owner;
-          const repo = context.repo.repo;
-
-          await github.request('POST /repos/{owner}/{repo}/issues/{issue_number}/comments', {
-            owner,
-            repo,
-            issue_number,
-            body: commentBody,
-          });
+    - name: Build & tag Docker image
+      run: |
+          docker build -t angular-app-dev-slot-${{ env.DEPLOY_SLOT }} .
+          docker save angular-app-dev-slot-${{ env.DEPLOY_SLOT }} -o angular-app-dev-slot-${{ env.DEPLOY_SLOT }}.tar
     ```
+
+-   **Post-Deployment Actions:** After deployment, several steps are taken to ensure the deployment is successful and visible to the team:
+
+    -   **Update Slot Files:** The workflow updates slot files to keep track of the last used slots for both frontend and backend, ensuring that future deployments use the correct slots.
+
+        ```yaml
+        - name: Update FE/BE last slot text file
+          run: |
+              sshpass -p "${{ secrets.SSH_PRIVATE_KEY }}" ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} "
+              set -euo pipefail
+              # Define the paths to the FE and BE slot files
+              BE_SLOT_FILE='/path/to/be/last_slot.txt'
+              FE_SLOT_FILE='/path/to/fe/last_slot.txt'
+
+              # Update slot files
+              echo \"${{ env.DEPLOY_SLOT }}\" > \"\$BE_SLOT_FILE\"
+              echo \"${{ env.DEPLOY_SLOT }}\" > \"\$FE_SLOT_FILE\"
+              "
+        ```
+
+    -   **Redeploy Last Deployed Backend Image:** After deploying the Angular app, the workflow checks if the backend image needs to be redeployed. It reads the last deployed backend's commit hash from a remote file and uses this commit to pull the latest code. The backend Docker image is then rebuilt and pushed to the remote server. This ensures that both the frontend and backend remain in sync and are deployed together, minimizing the risk of version mismatches and ensuring consistent functionality across the application.
+
+        ```yaml
+        # Determine if BE Image Copy is Required
+        - name: Determine if BE Image Copy is Required
+          id: setup_be_copy
+          env:
+              DEPLOY_SLOT: ${{ env.DEPLOY_SLOT }}
+              LATEST_BE_SLOT: ${{ env.LATEST_BE_SLOT }}
+          run: |
+              if [[ "$DEPLOY_SLOT" == "$LATEST_BE_SLOT" ]]; then
+                echo "✅ BE slot is the same as current FE slot. Skipping copy."
+                echo "skip=true" >> $GITHUB_OUTPUT
+              else
+                echo "ℹ️ BE image needs to be copied to new slot."
+                echo "skip=false" >> $GITHUB_OUTPUT
+              fi
+
+        # Get the commit hash for the latest deployed BE
+        - name: Get the commit hash for the latest deployed BE_COMMIT
+          run: |
+              SYNCED_BE_COMMIT=$(sshpass -p "${{ secrets.SSH_PRIVATE_KEY }}" ssh -T -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} bash << 'EOF'
+                set -e
+                SLOT_DETAILS_FILE="/home/${{ secrets.SSH_USER }}/Desktop/dev-deployment/docker-images/slot0${{ env.LATEST_BE_SLOT }}-details.txt"
+
+                if [[ -f "$SLOT_DETAILS_FILE" ]]; then
+                  grep "be-" "$SLOT_DETAILS_FILE" | awk '{print $2}'
+                fi
+              EOF
+              )
+
+              echo "Fetched BE Commit: $SYNCED_BE_COMMIT"
+              echo "BE_COMMIT_HASH=$SYNCED_BE_COMMIT" >> $GITHUB_ENV
+
+        # Build docker image for BE
+        - name: Build docker image for BE
+          if: steps.setup_be_copy.outputs.skip == 'false'
+          run: |
+              echo "Using BE Commit: $BE_COMMIT_HASH"
+
+              # Clone the repository
+              git clone https://${{ secrets.ORG_NAME }}:${{ secrets.PAT_TOKEN }}@github.com/binapani-edu/academy-backend-api.git be-src
+              cd be-src
+              git checkout $BE_COMMIT_HASH
+
+              # Build the Docker image
+              docker build -t express-app-dev-slot-${{ env.DEPLOY_SLOT }} .
+
+              # Save the Docker image
+              docker save express-app-dev-slot-${{ env.DEPLOY_SLOT }} -o express-app-dev-slot-${{ env.DEPLOY_SLOT }}.tar
+
+              # Move it to the root of the runner
+              mv express-app-dev-slot-${{ env.DEPLOY_SLOT }}.tar ../
+
+        # Transfer Docker image to the selected slot
+        - name: Transfer Docker image to the selected slot
+          if: steps.setup_be_copy.outputs.skip == 'false'
+          uses: appleboy/scp-action@v0.1.2
+          with:
+              host: ${{ secrets.SERVER_IP }}
+              username: ${{ secrets.SSH_USER }}
+              password: ${{ secrets.SSH_PRIVATE_KEY }}
+              source: "./express-app-dev-slot-${{ env.DEPLOY_SLOT }}.tar"
+              target: "/home/${{ secrets.SSH_USER }}/Desktop/dev-deployment/docker-images/be/slot-${{ env.DEPLOY_SLOT }}"
+
+        # Restart only the updated Backend container
+        - name: Restart Backend Service and Update Last Slot File
+          if: steps.setup_be_copy.outputs.skip == 'false'
+          run: |
+              sshpass -p "${{ secrets.SSH_PRIVATE_KEY }}" ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} "
+                echo '${{ secrets.SSH_PRIVATE_KEY }}' | sudo -S docker load -i /home/${{ secrets.SSH_USER }}/Desktop/dev-deployment/docker-images/be/slot-${{ env.DEPLOY_SLOT }}/express-app-dev-slot-${{ env.DEPLOY_SLOT }}.tar
+
+                cd /home/${{ secrets.SSH_USER }}/Desktop/dev-deployment
+                echo '${{ secrets.SSH_PRIVATE_KEY }}' | sudo -S docker-compose up -d express-app-slot-${{ env.DEPLOY_SLOT }}
+
+                echo ${{ env.DEPLOY_SLOT }} > /home/${{ secrets.SSH_USER }}/Desktop/dev-deployment/docker-images/be/last_slot.txt
+              "
+        ```
+
+        This snippet provides a clear view of the steps involved in determining if the backend image needs to be redeployed, fetching the commit hash, building the Docker image, and deploying it to the server.
+
+    -   **Post Deployment Comment:** A comment is posted on the pull request with deployment details, providing visibility into the deployment process and ensuring that all team members are informed of the latest changes.
+
+        ```yaml
+        - name: Post Deployment Comment on PR
+          uses: actions/github-script@v6
+          with:
+              github-token: ${{ secrets.GITHUB_TOKEN }}
+              script: |
+                  const slot = process.env.DEPLOY_SLOT;
+                  const devUrl = `https://dev-url-for-slot-${slot}.example.com`;
+                  const commentBody = `
+                  🚀 **Deployment is Successful!**
+                  - **Frontend Slot:** ${slot}
+                  - **Dev URL:** [${devUrl}](${devUrl})
+                  ✅ The Angular app has been successfully deployed.
+                  `;
+
+                  const issue_number = context.payload.pull_request.number;
+                  const owner = context.repo.owner;
+                  const repo = context.repo.repo;
+
+                  await github.request('POST /repos/{owner}/{repo}/issues/{issue_number}/comments', {
+                    owner,
+                    repo,
+                    issue_number,
+                    body: commentBody,
+                  });
+        ```
+
+<p align="center">
+    <img src="blogs/ci-cd-pipeline-with-github-actions/assets/bulky-cd.png" alt="Bulky Continuous Deployment" width="300"/>
+    <br/>
+    <em>"When your CI/CD pipeline feels as bulky as this CD, but still gets the job done!"</em>
+</p>
 
 ### Production Workflow
 
 The production workflow is designed to deploy stable releases to the live environment, ensuring that users always have access to the latest features and improvements. Here's an overview of the production workflow:
 
-- **Trigger:** The workflow is triggered by pushes to the `main` branch, indicating that the code is ready for production.
+-   **Trigger:** The workflow is triggered by pushes to the `main` branch, indicating that the code is ready for production.
 
-  ```yaml
-  on:
-    push:
-      branches:
-        - main
-  ```
+    ```yaml
+    on:
+        push:
+            branches:
+                - main
+    ```
 
-- **Environment Setup:** Similar to the development workflow, the code is checked out, and Docker Buildx is set up.
+-   **Environment Setup:** Similar to the development workflow, the code is checked out, and Docker Buildx is set up.
 
-  ```yaml
-  steps:
-    - name: Checkout repository
-      uses: actions/checkout@v2
+    ```yaml
+    steps:
+        - name: Checkout repository
+          uses: actions/checkout@v2
 
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v1
-  ```
+        - name: Set up Docker Buildx
+          uses: docker/setup-buildx-action@v1
+    ```
 
-- **Docker Image Management:** The Angular application is built into a Docker image and transferred to the server.
+-   **Docker Image Management:** The Angular application is built into a Docker image and transferred to the server.
 
-  ```yaml
-  - name: Build Docker image for Angular app
-    run: |
-      docker build -t angular-app:latest .
-      docker save angular-app:latest -o angular-app.tar
-  ```
+    ```yaml
+    - name: Build Docker image for Angular app
+      run: |
+          docker build -t angular-app:latest .
+          docker save angular-app:latest -o angular-app.tar
+    ```
 
-- **Deployment:** The Docker image is loaded on the server, and the `angular-app` service is updated using Docker Compose, ensuring a seamless transition to the new version.
+-   **Deployment:** The Docker image is loaded on the server, and the `angular-app` service is updated using Docker Compose, ensuring a seamless transition to the new version.
 
-  ```yaml
-  - name: Load and deploy Docker image on the server
-    run: |
-      sshpass -p "${{ secrets.SSH_PRIVATE_KEY }}" ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} "
-        echo '${{ secrets.SSH_PRIVATE_KEY }}' | sudo -S docker load -i /path/to/angular-app.tar && \
-        cd /path/to/deployment && \
-        echo '${{ secrets.SSH_PRIVATE_KEY }}' | sudo -S docker-compose up -d angular-app
-      "
-  ```
+    ```yaml
+    - name: Load and deploy Docker image on the server
+      run: |
+          sshpass -p "${{ secrets.SSH_PRIVATE_KEY }}" ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} "
+            echo '${{ secrets.SSH_PRIVATE_KEY }}' | sudo -S docker load -i /path/to/angular-app.tar && \
+            cd /path/to/deployment && \
+            echo '${{ secrets.SSH_PRIVATE_KEY }}' | sudo -S docker-compose up -d angular-app
+          "
+    ```
 
 By automating these processes with GitHub Actions, I have achieved a streamlined and efficient CI/CD pipeline for the Angular frontend, reducing manual intervention and accelerating the delivery of new features.
 
@@ -219,141 +314,222 @@ The backend of my application is powered by an Express server, which handles API
 
 The development workflow for the backend is triggered by pull requests, allowing me to test changes in a controlled environment before merging them into the main branch. Here's how the workflow is structured:
 
-- **Trigger:** The workflow is activated on pull requests that are opened, synchronized, or reopened, except for those from the `main` branch.
-
-  ```yaml
-  on:
-    pull_request:
-      types: [opened, synchronize, reopened]
-  ```
-
-- **Environment Setup:** The workflow begins by checking out the code from the pull request and setting up Docker Buildx for building Docker images.
-
-  ```yaml
-  steps:
-    - name: Checkout repository
-      uses: actions/checkout@v2
-      with:
-        ref: ${{ github.event.pull_request.head.sha }}
-
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v1
-  ```
-
-- **Slot Management:** A dynamic slot management system selects the next available deployment slot for the backend, ensuring that each deployment is isolated and does not interfere with others.
-
-  ```yaml
-  - name: Select Deployment Slot
-    id: get_slot
-    run: |
-      SYNCED_SLOT=$(sshpass -p "${{ secrets.SSH_PRIVATE_KEY }}" ssh -T -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} << 'EOF' | tail -n 1
-        # Logic to determine the next slot
-      EOF
-      )
-      echo "DEPLOY_SLOT=$(echo $SYNCED_SLOT | tr -d '\r')" >> $GITHUB_ENV
-  ```
-
-- **Docker Image Management:** The Express application is built into a Docker image, which is then transferred to the selected deployment slot on the server.
-
-  ```yaml
-  - name: Build & tag Docker image
-    run: |
-      docker build -t express-app-dev-slot-${{ env.DEPLOY_SLOT }} .
-      docker save express-app-dev-slot-${{ env.DEPLOY_SLOT }} -o express-app-dev-slot-${{ env.DEPLOY_SLOT }}.tar
-  ```
-
-- **Post-Deployment Actions:** After deployment, several steps are taken to ensure the deployment is successful and visible to the team:
-
-  - **Update Slot Files:** The workflow updates slot files to keep track of the last used slots for both frontend and backend, ensuring that future deployments use the correct slots.
+-   **Trigger:** The workflow is activated on pull requests that are opened, synchronized, or reopened, except for those from the `main` branch.
 
     ```yaml
-    - name: Update FE/BE last slot text file
+    on:
+        pull_request:
+            types: [opened, synchronize, reopened]
+    ```
+
+-   **Environment Setup:** The workflow begins by checking out the code from the pull request and setting up Docker Buildx for building Docker images.
+
+    ```yaml
+    steps:
+        - name: Checkout repository
+          uses: actions/checkout@v2
+          with:
+              ref: ${{ github.event.pull_request.head.sha }}
+
+        - name: Set up Docker Buildx
+          uses: docker/setup-buildx-action@v1
+    ```
+
+-   **Slot Management:** A dynamic slot management system selects the next available deployment slot for the backend, ensuring that each deployment is isolated and does not interfere with others.
+
+    ```yaml
+    - name: Select Deployment Slot
+      id: get_slot
       run: |
-        sshpass -p "${{ secrets.SSH_PRIVATE_KEY }}" ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} "
-        set -euo pipefail
-        # Define the paths to the FE and BE slot files
-        BE_SLOT_FILE='/path/to/be/last_slot.txt'
-        FE_SLOT_FILE='/path/to/fe/last_slot.txt'
-
-        # Update slot files
-        echo \"${{ env.DEPLOY_SLOT }}\" > \"\$BE_SLOT_FILE\"
-        echo \"${{ env.DEPLOY_SLOT }}\" > \"\$FE_SLOT_FILE\"
-        "
+          SYNCED_SLOT=$(sshpass -p "${{ secrets.SSH_PRIVATE_KEY }}" ssh -T -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} << 'EOF' | tail -n 1
+            # Logic to determine the next slot
+          EOF
+          )
+          echo "DEPLOY_SLOT=$(echo $SYNCED_SLOT | tr -d '\r')" >> $GITHUB_ENV
     ```
 
-  - **Post Deployment Comment:** A comment is posted on the pull request with deployment details, providing visibility into the deployment process and ensuring that all team members are informed of the latest changes.
+-   **Docker Image Management:** The Express application is built into a Docker image, which is then transferred to the selected deployment slot on the server.
 
     ```yaml
-    - name: Post Deployment Comment on PR
-      uses: actions/github-script@v6
-      with:
-        github-token: ${{ secrets.GITHUB_TOKEN }}
-        script: |
-          const slot = process.env.DEPLOY_SLOT;
-          const devUrl = `https://dev-url-for-slot-${slot}.example.com/api`;
-          const commentBody = `
-          🚀 **Deployment is Successful!**
-          - **Backend Slot:** ${slot}
-          - **API URL:** [${devUrl}](${devUrl})
-          ✅ The Express app has been successfully deployed.
-          `;
-
-          const issue_number = context.payload.pull_request.number;
-          const owner = context.repo.owner;
-          const repo = context.repo.repo;
-
-          await github.request('POST /repos/{owner}/{repo}/issues/{issue_number}/comments', {
-            owner,
-            repo,
-            issue_number,
-            body: commentBody,
-          });
+    - name: Build & tag Docker image
+      run: |
+          docker build -t express-app-dev-slot-${{ env.DEPLOY_SLOT }} .
+          docker save express-app-dev-slot-${{ env.DEPLOY_SLOT }} -o express-app-dev-slot-${{ env.DEPLOY_SLOT }}.tar
     ```
+
+-   **Post-Deployment Actions:** After deployment, several steps are taken to ensure the deployment is successful and visible to the team:
+
+    -   **Update Slot Files:** The workflow updates slot files to keep track of the last used slots for both frontend and backend, ensuring that future deployments use the correct slots.
+
+        ```yaml
+        - name: Update FE/BE last slot text file
+          run: |
+              sshpass -p "${{ secrets.SSH_PRIVATE_KEY }}" ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} "
+              set -euo pipefail
+              # Define the paths to the FE and BE slot files
+              BE_SLOT_FILE='/path/to/be/last_slot.txt'
+              FE_SLOT_FILE='/path/to/fe/last_slot.txt'
+
+              # Update slot files
+              echo \"${{ env.DEPLOY_SLOT }}\" > \"\$BE_SLOT_FILE\"
+              echo \"${{ env.DEPLOY_SLOT }}\" > \"\$FE_SLOT_FILE\"
+              "
+        ```
+
+    -   **Redeploy Last Deployed Frontend Image:** After deploying the Express app, the workflow checks if the frontend image needs to be redeployed. It reads the last deployed frontend's commit hash from a remote file and uses this commit to pull the latest code. The frontend Docker image is then rebuilt and pushed to the remote server. This ensures that both the frontend and backend remain in sync and are deployed together, minimizing the risk of version mismatches and ensuring consistent functionality across the application.
+
+        ```yaml
+        # Determine if FE Image Copy is Required
+        - name: Determine if FE Image Copy is Required
+          id: setup_fe_copy
+          env:
+              DEPLOY_SLOT: ${{ env.DEPLOY_SLOT }}
+              LATEST_FE_SLOT: ${{ env.LATEST_FE_SLOT }}
+          run: |
+              if [[ "$DEPLOY_SLOT" == "$LATEST_FE_SLOT" ]]; then
+                echo "✅ FE slot is the same as current BE slot. Skipping copy."
+                echo "skip=true" >> $GITHUB_OUTPUT
+              else
+                echo "ℹ️ FE image needs to be copied to new slot."
+                echo "skip=false" >> $GITHUB_OUTPUT
+              fi
+
+        # Get the commit hash for the latest deployed FE
+        - name: Get the commit hash for the latest deployed FE_COMMIT
+          run: |
+              SYNCED_FE_COMMIT=$(sshpass -p "${{ secrets.SSH_PRIVATE_KEY }}" ssh -T -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} bash << 'EOF'
+                set -e
+                SLOT_DETAILS_FILE="/home/${{ secrets.SSH_USER }}/Desktop/dev-deployment/docker-images/slot0${{ env.LATEST_FE_SLOT }}-details.txt"
+
+                if [[ -f "$SLOT_DETAILS_FILE" ]]; then
+                  grep "fe-" "$SLOT_DETAILS_FILE" | awk '{print $2}'
+                fi
+              EOF
+              )
+
+              echo "Fetched FE Commit: $SYNCED_FE_COMMIT"
+              echo "FE_COMMIT_HASH=$SYNCED_FE_COMMIT" >> $GITHUB_ENV
+
+        # Build docker image for FE
+        - name: Build docker image for FE
+          if: steps.setup_fe_copy.outputs.skip == 'false'
+          run: |
+              echo "Using FE Commit: $FE_COMMIT_HASH"
+
+              # Clone the repository
+              git clone https://${{ secrets.ORG_NAME }}:${{ secrets.PAT_TOKEN }}@github.com/binapani-edu/academy-frontend.git fe-src
+              cd fe-src
+              git checkout $FE_COMMIT_HASH
+
+              # Build the Docker image
+              docker build -t angular-app-dev-slot-${{ env.DEPLOY_SLOT }} .
+
+              # Save the Docker image
+              docker save angular-app-dev-slot-${{ env.DEPLOY_SLOT }} -o angular-app-dev-slot-${{ env.DEPLOY_SLOT }}.tar
+
+              # Move it to the root of the runner
+              mv angular-app-dev-slot-${{ env.DEPLOY_SLOT }}.tar ../
+
+        # Transfer Docker image to the selected slot
+        - name: Transfer Docker image to the selected slot
+          if: steps.setup_fe_copy.outputs.skip == 'false'
+          uses: appleboy/scp-action@v0.1.2
+          with:
+              host: ${{ secrets.SERVER_IP }}
+              username: ${{ secrets.SSH_USER }}
+              password: ${{ secrets.SSH_PRIVATE_KEY }}
+              source: "./angular-app-dev-slot-${{ env.DEPLOY_SLOT }}.tar"
+              target: "/home/${{ secrets.SSH_USER }}/Desktop/dev-deployment/docker-images/fe/slot-${{ env.DEPLOY_SLOT }}"
+
+        # Restart only the updated Frontend container
+        - name: Restart Frontend Service and Update Last Slot File
+          if: steps.setup_fe_copy.outputs.skip == 'false'
+          run: |
+              sshpass -p "${{ secrets.SSH_PRIVATE_KEY }}" ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} "
+                echo '${{ secrets.SSH_PRIVATE_KEY }}' | sudo -S docker load -i /home/${{ secrets.SSH_USER }}/Desktop/dev-deployment/docker-images/fe/slot-${{ env.DEPLOY_SLOT }}/angular-app-dev-slot-${{ env.DEPLOY_SLOT }}.tar
+
+                cd /home/${{ secrets.SSH_USER }}/Desktop/dev-deployment
+                echo '${{ secrets.SSH_PRIVATE_KEY }}' | sudo -S docker-compose up -d angular-app-slot-${{ env.DEPLOY_SLOT }}
+
+                echo ${{ env.DEPLOY_SLOT }} > /home/${{ secrets.SSH_USER }}/Desktop/dev-deployment/docker-images/fe/last_slot.txt
+              "
+        ```
+
+        This snippet provides a clear view of the steps involved in determining if the frontend image needs to be redeployed, fetching the commit hash, building the Docker image, and deploying it to the server.
+
+    -   **Post Deployment Comment:** A comment is posted on the pull request with deployment details, providing visibility into the deployment process and ensuring that all team members are informed of the latest changes.
+
+        ```yaml
+        - name: Post Deployment Comment on PR
+          uses: actions/github-script@v6
+          with:
+              github-token: ${{ secrets.GITHUB_TOKEN }}
+              script: |
+                  const slot = process.env.DEPLOY_SLOT;
+                  const devUrl = `https://dev-url-for-slot-${slot}.example.com/api`;
+                  const commentBody = `
+                  🚀 **Deployment is Successful!**
+                  - **Backend Slot:** ${slot}
+                  - **API URL:** [${devUrl}](${devUrl})
+                  ✅ The Express app has been successfully deployed.
+                  `;
+
+                  const issue_number = context.payload.pull_request.number;
+                  const owner = context.repo.owner;
+                  const repo = context.repo.repo;
+
+                  await github.request('POST /repos/{owner}/{repo}/issues/{issue_number}/comments', {
+                    owner,
+                    repo,
+                    issue_number,
+                    body: commentBody,
+                  });
+        ```
 
 ### Production Workflow
 
 The production workflow is designed to deploy stable releases to the live environment, ensuring that users always have access to the latest features and improvements. Here's an overview of the production workflow:
 
-- **Trigger:** The workflow is triggered by pushes to the `main` branch, indicating that the code is ready for production.
+-   **Trigger:** The workflow is triggered by pushes to the `main` branch, indicating that the code is ready for production.
 
-  ```yaml
-  on:
-    push:
-      branches:
-        - main
-  ```
+    ```yaml
+    on:
+        push:
+            branches:
+                - main
+    ```
 
-- **Environment Setup:** Similar to the development workflow, the code is checked out, and Docker Buildx is set up.
+-   **Environment Setup:** Similar to the development workflow, the code is checked out, and Docker Buildx is set up.
 
-  ```yaml
-  steps:
-    - name: Checkout repository
-      uses: actions/checkout@v2
+    ```yaml
+    steps:
+        - name: Checkout repository
+          uses: actions/checkout@v2
 
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v1
-  ```
+        - name: Set up Docker Buildx
+          uses: docker/setup-buildx-action@v1
+    ```
 
-- **Docker Image Management:** The Express application is built into a Docker image and transferred to the server.
+-   **Docker Image Management:** The Express application is built into a Docker image and transferred to the server.
 
-  ```yaml
-  - name: Build Docker image for Express app
-    run: |
-      docker build -t express-app:latest .
-      docker save express-app:latest -o express-app.tar
-  ```
+    ```yaml
+    - name: Build Docker image for Express app
+      run: |
+          docker build -t express-app:latest .
+          docker save express-app:latest -o express-app.tar
+    ```
 
-- **Deployment:** The Docker image is loaded on the server, and the `express-app` service is updated using Docker Compose, ensuring a seamless transition to the new version.
+-   **Deployment:** The Docker image is loaded on the server, and the `express-app` service is updated using Docker Compose, ensuring a seamless transition to the new version.
 
-  ```yaml
-  - name: Load and deploy Docker image on the server
-    run: |
-      sshpass -p "${{ secrets.SSH_PRIVATE_KEY }}" ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} "
-        echo '${{ secrets.SSH_PRIVATE_KEY }}' | sudo -S docker load -i /path/to/express-app.tar && \
-        cd /path/to/deployment && \
-        echo '${{ secrets.SSH_PRIVATE_KEY }}' | sudo -S docker-compose up -d express-app
-      "
-  ```
+    ```yaml
+    - name: Load and deploy Docker image on the server
+      run: |
+          sshpass -p "${{ secrets.SSH_PRIVATE_KEY }}" ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} "
+            echo '${{ secrets.SSH_PRIVATE_KEY }}' | sudo -S docker load -i /path/to/express-app.tar && \
+            cd /path/to/deployment && \
+            echo '${{ secrets.SSH_PRIVATE_KEY }}' | sudo -S docker-compose up -d express-app
+          "
+    ```
 
 By automating these processes with GitHub Actions, I have achieved a streamlined and efficient CI/CD pipeline for the Express backend, reducing manual intervention and ensuring that the backend is always in sync with the frontend.
 
@@ -393,6 +569,10 @@ Embarking on the journey to set up a CI/CD pipeline for my Angular frontend and 
    The needs of a project can change over time, so it's important to regularly review and optimize the CI/CD workflows. This ensures that they continue to meet the project's requirements and remain efficient.
 
 By applying these lessons and best practices, I was able to create a CI/CD pipeline that is not only efficient but also adaptable to future needs. The experience has been invaluable, and I look forward to applying these insights to future projects.
+
+<p align="center">
+    <img src="blogs/ci-cd-pipeline-with-github-actions/assets/funny-angular-express-docker-union.png" alt="Funny Angular Express Docker Union" width="300"/>
+</p>
 
 ## Conclusion and Future Enhancements
 
